@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"os"
 	"url-shortner/internal/config"
+	"url-shortner/internal/storage/postgres"
 )
 
 const (
@@ -19,7 +20,13 @@ func main() {
 
 	log.Info("starting server", slog.String("env", cfg.Env))
 
-	// TODO: db init
+	storage, err := postgres.New(cfg.PostgresConfig)
+	if err != nil {
+		log.Error("failed to init storage", slog.Attr{Key: "error", Value: slog.StringValue(err.Error())})
+		os.Exit(1)
+	}
+
+	_ = storage
 
 	// TODO: router init
 
