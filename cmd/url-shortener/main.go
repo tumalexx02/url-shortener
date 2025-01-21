@@ -4,8 +4,13 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"log/slog"
+	"net/http"
 	"os"
 	"url-shortner/internal/config"
+	"url-shortner/internal/http-server/handlers/redirect"
+	"url-shortner/internal/http-server/handlers/url/deleteUrl"
+	"url-shortner/internal/http-server/handlers/url/save"
+	loggerMiddleware "url-shortner/internal/http-server/middleware/logger"
 	"url-shortner/internal/storage/postgres"
 )
 
@@ -20,8 +25,6 @@ func main() {
 
 	log := initLogger(cfg.Env)
 
-	log.Info("starting server", slog.String("env", cfg.Env))
-
 	storage, err := postgres.New(cfg.PostgresConfig)
 	if err != nil {
 		log.Error("failed to init storage", slog.Attr{Key: "error", Value: slog.StringValue(err.Error())})
@@ -33,13 +36,36 @@ func main() {
 	router := chi.NewRouter()
 
 	router.Use(middleware.RequestID)
-	router.Use(middleware.Logger)
+	router.Use(loggerMiddleware.New(log))
 	router.Use(middleware.Recoverer)
 	router.Use(middleware.URLFormat)
 
-	// TODO: router init
+	router.Route("/url", func(r chi.Router) {
+		r.Use(middleware.BasicAuth("url-shortener", map[string]string{
+			cfg.HTTPServer.User: cfg.HTTPServer.Password,
+		}))
 
-	// TODO: run server
+		r.Post("/", save.New(log, storage))
+		r.Delete("/{alias}", deleteUrl.New(log, storage))
+	})
+
+	router.Get("/{alias}", redirect.New(log, storage))
+
+	log.Info("starting server", slog.String("address", cfg.Address))
+
+	srv := &http.Server{
+		Addr:         cfg.Address,
+		Handler:      router,
+		ReadTimeout:  cfg.HTTPServer.Timeout,
+		WriteTimeout: cfg.HTTPServer.Timeout,
+		IdleTimeout:  cfg.HTTPServer.IdleTimeout,
+	}
+
+	if err := srv.ListenAndServe(); err != nil {
+		log.Error("failed to start server")
+	}
+
+	log.Info("shutting down server")
 }
 
 func initLogger(env string) *slog.Logger {
