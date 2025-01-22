@@ -9,17 +9,19 @@ import (
 
 type Config struct {
 	Env            string `yaml:"env"`
+	MigrationsPath string `yaml:"migrations_path"`
+	IsReload       bool   `yaml:"is_reload"`
 	PostgresConfig `yaml:"postgres_config"`
 	HTTPServer     `yaml:"http_server"`
 }
 
 type PostgresConfig struct {
-	Host     string `yaml:"host"`
-	Port     string `yaml:"port"`
-	User     string `yaml:"user"`
-	Password string `yaml:"password"`
-	Database string `yaml:"database_name"`
-	SSLMode  string `yaml:"ssl_mode"`
+	Host       string `yaml:"host"`
+	Port       string `yaml:"port"`
+	DBUser     string `yaml:"user"`
+	DBPassword string `yaml:"password"`
+	Database   string `yaml:"database_name"`
+	SSLMode    string `yaml:"ssl_mode"`
 }
 
 type HTTPServer struct {

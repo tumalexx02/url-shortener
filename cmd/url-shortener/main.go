@@ -25,7 +25,7 @@ func main() {
 
 	log := initLogger(cfg.Env)
 
-	storage, err := postgres.New(cfg.PostgresConfig)
+	storage, err := postgres.New(*cfg)
 	if err != nil {
 		log.Error("failed to init storage", slog.Attr{Key: "error", Value: slog.StringValue(err.Error())})
 		os.Exit(1)
