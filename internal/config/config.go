@@ -13,6 +13,7 @@ type Config struct {
 	IsReload       bool   `yaml:"is_reload"`
 	PostgresConfig `yaml:"postgres_config"`
 	HTTPServer     `yaml:"http_server"`
+	RateLimiter    `yaml:"rate_limiter"`
 }
 
 type PostgresConfig struct {
@@ -30,6 +31,12 @@ type HTTPServer struct {
 	IdleTimeout time.Duration `yaml:"idle_timeout" env-default:"60s"`
 	User        string        `yaml:"user" env-required:"true"`
 	Password    string        `yaml:"password" env-required:"true" env:"HTTP_SERVER_PASSWORD"`
+}
+
+type RateLimiter struct {
+	RateLimit  int           `yaml:"rate_limit" env-default:"200"`
+	RateBuffer int           `yaml:"rate_buffer" env-default:"5"`
+	TimeFrame  time.Duration `yaml:"time_frame" env-default:"60s"`
 }
 
 func MustLoadConfig() *Config {

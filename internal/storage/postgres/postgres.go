@@ -26,7 +26,7 @@ type Storage struct {
 	db *sqlx.DB
 }
 
-func New(cfg config.Config) (*Storage, error) {
+func New(cfg *config.Config) (*Storage, error) {
 	const op = "storage.postgres.New"
 
 	db, err := sqlx.Open(
@@ -45,7 +45,7 @@ func New(cfg config.Config) (*Storage, error) {
 	return &Storage{db: db}, nil
 }
 
-func initMigrations(cfg config.Config, db *sqlx.DB) error {
+func initMigrations(cfg *config.Config, db *sqlx.DB) error {
 	const op = "storage.postgres.initMigrations"
 
 	err := goose.SetDialect("postgres")
