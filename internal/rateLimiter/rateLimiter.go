@@ -13,12 +13,7 @@ type RateLimiter struct {
 	rateBuffer int
 	timeFrame  time.Duration
 	locked     bool
-	peakRate   PeakRate
-}
-
-type PeakRate struct {
-	rate      int
-	resetTime time.Time
+	peakRate   int
 }
 
 func NewRateLimiter(cfg *config.Config) *RateLimiter {
@@ -27,6 +22,7 @@ func NewRateLimiter(cfg *config.Config) *RateLimiter {
 		rateLimit:  cfg.RateLimit,
 		rateBuffer: cfg.RateBuffer,
 		timeFrame:  cfg.TimeFrame,
+		peakRate:   0,
 	}
 }
 
@@ -36,13 +32,16 @@ func (rl *RateLimiter) Add() {
 
 	now := time.Now()
 	rl.requests = append(rl.requests, now)
+
+	rate := rl.getRate()
+	rl.updatePeakRate(rate)
 }
 
-func (rl *RateLimiter) Allow() bool {
+func (rl *RateLimiter) Allow() (int, bool) {
 	rl.mu.Lock()
 	defer rl.mu.Unlock()
 
-	curRate := rl.GetRate()
+	curRate := rl.getRate()
 	maxReqsToLock := rl.rateLimit + rl.rateBuffer
 
 	if !rl.locked && curRate == maxReqsToLock {
@@ -54,20 +53,10 @@ func (rl *RateLimiter) Allow() bool {
 	}
 
 	if rl.locked {
-		return false
+		return curRate, false
 	}
 
-	return true
-}
-
-func (rl *RateLimiter) GetRate() int {
-	now := time.Now()
-
-	for len(rl.requests) > 0 && now.Sub(rl.requests[0]) > rl.timeFrame {
-		rl.requests = rl.requests[1:]
-	}
-
-	return len(rl.requests)
+	return curRate, true
 }
 
 func (rl *RateLimiter) GetLimit() time.Duration {
@@ -78,24 +67,31 @@ func (rl *RateLimiter) GetPeakRate() int {
 	rl.mu.RLock()
 	defer rl.mu.RUnlock()
 
-	rl.checkPeakRate()
+	return rl.peakRate
+}
 
-	return rl.peakRate.rate
+func (rl *RateLimiter) ResetPeakRate() int {
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+
+	lastPeakRate := rl.peakRate
+	rl.peakRate = 0
+
+	return lastPeakRate
+}
+
+func (rl *RateLimiter) getRate() int {
+	now := time.Now()
+
+	for len(rl.requests) > 0 && now.Sub(rl.requests[0]) > rl.timeFrame {
+		rl.requests = rl.requests[1:]
+	}
+
+	return len(rl.requests)
 }
 
 func (rl *RateLimiter) updatePeakRate(rate int) {
-	rl.checkPeakRate()
-
-	if rate > rl.peakRate.rate {
-		rl.peakRate.rate = rate
-	}
-}
-
-func (rl *RateLimiter) checkPeakRate() {
-	now := time.Now()
-
-	if now.Sub(rl.peakRate.resetTime) >= 24*time.Hour {
-		rl.peakRate.rate = 0
-		rl.peakRate.resetTime = now
+	if rate > rl.peakRate {
+		rl.peakRate = rate
 	}
 }

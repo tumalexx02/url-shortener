@@ -16,7 +16,8 @@ func New(log *slog.Logger, rateLimiter *rl.RateLimiter) func(next http.Handler) 
 		log.Info("rateLimiter middleware enabled")
 
 		fn := func(w http.ResponseWriter, r *http.Request) {
-			if !rateLimiter.Allow() {
+			if rate, allow := rateLimiter.Allow(); !allow {
+				log.Info("rateLimiter exceeded", slog.Int("rate", rate))
 				rateLimitExceeded(w, int(rateLimiter.GetLimit().Seconds()))
 				return
 			}

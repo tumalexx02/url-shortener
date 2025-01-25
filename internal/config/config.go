@@ -11,6 +11,7 @@ type Config struct {
 	Env            string `yaml:"env"`
 	MigrationsPath string `yaml:"migrations_path"`
 	IsReload       bool   `yaml:"is_reload"`
+	Location       string `yaml:"location" env-default:"Europe/Moscow"`
 	PostgresConfig `yaml:"postgres_config"`
 	HTTPServer     `yaml:"http_server"`
 	RateLimiter    `yaml:"rate_limiter"`
@@ -46,7 +47,7 @@ func MustLoadConfig() *Config {
 	}
 
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
-		log.Fatalf("Config file does not exist: %s", configPath)
+		log.Fatalf("cnf file does not exist: %s", configPath)
 	}
 
 	var cfg Config
