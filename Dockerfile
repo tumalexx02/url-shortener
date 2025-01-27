@@ -1,22 +1,14 @@
-FROM golang:1.23-alpine AS builder
+FROM golang:1.23-alpine
 
 WORKDIR /app
 
 COPY go.mod go.sum ./
 RUN go mod download
 
+RUN go get -u github.com/pressly/goose
+
 COPY . .
 
-RUN go build -o /bin/app ./cmd/url-shortener/main.go
+RUN go build -o url-shortener ./cmd/url-shortener
 
-FROM alpine:latest
-
-WORKDIR /app
-
-COPY --from=builder /bin/app /bin/app
-
-COPY --from=builder /app/configs/local.yaml /app/configs/local.yaml
-COPY --from=builder /app/migrations /app/migrations
-
-RUN chmod +x bin/app
-CMD ["/bin/app"]
+CMD ["./url-shortener"]

@@ -1,31 +1,30 @@
 services:
   app:
+    container_name: url-shortener
     build:
       context: .
+      dockerfile: Dockerfile
     ports:
-      - "8000:8000"
-    depends_on:
-      - postgres
+      - "8085:8085"
     environment:
-      CONFIG_PATH: "/app/configs/local.yaml"
-    networks:
-      - dev
+      - CONFIG_PATH=/app/config/docker.yaml
+    volumes:
+      - ./config:/app/config
+    depends_on:
+      - db
 
-  postgres:
+  db:
     image: postgres:15
-    container_name: postgres-prod
+    container_name: postgres
+    restart: always
     ports:
       - "5432:5432"
     environment:
+      POSTGRES_USER: "postgres"
       POSTGRES_PASSWORD: "postgres"
       POSTGRES_DB: "url"
     volumes:
-      - db_data:/var/lib/postgresql/data
-    networks:
-      - dev
+      - postgres_data:/var/lib/postgresql/data
 
 volumes:
-  db_data:
-
-networks:
-  dev:
+  postgres_data:
