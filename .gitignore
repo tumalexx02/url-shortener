@@ -1,3 +1,4 @@
 /local.env
 /config/local.yaml
 /.idea
+.DS_Store

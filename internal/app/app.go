@@ -12,8 +12,8 @@ import (
 	"url-shortner/internal/config"
 	mwLogger "url-shortner/internal/http-server/middleware/logger"
 	"url-shortner/internal/jobs"
-	"url-shortner/internal/jobs/resetPeakRate"
-	rl "url-shortner/internal/rateLimiter"
+	"url-shortner/internal/jobs/reset-peak-rate"
+	rl "url-shortner/internal/rate-limiter"
 	"url-shortner/internal/routes"
 	"url-shortner/internal/storage/postgres"
 )
@@ -57,7 +57,7 @@ func New(cfg *config.Config, log *slog.Logger) (*App, error) {
 func (a *App) Start() error {
 	const op = "app.Start"
 
-	resetPeakJob := resetPeakRate.New(a.log, a.rl)
+	resetPeakJob := reset_peak_rate.New(a.log, a.rl)
 	err := a.startJobsScheduler("0 0 * * *", resetPeakJob)
 	if err != nil {
 		return fmt.Errorf("%s: %w", op, err)

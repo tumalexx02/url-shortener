@@ -1,23 +1,23 @@
-package mwRateLimiter
+package ratelimiter
 
 import (
 	"log/slog"
 	"net/http"
 	"strconv"
-	rl "url-shortner/internal/rateLimiter"
+	rl "url-shortner/internal/rate-limiter"
 )
 
 func New(log *slog.Logger, rateLimiter *rl.RateLimiter) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		log := log.With(
-			slog.String("component", "middleware/rateLimiter"),
+			slog.String("component", "middleware/rate-limiter"),
 		)
 
-		log.Info("rateLimiter middleware enabled")
+		log.Info("rate-limiter middleware enabled")
 
 		fn := func(w http.ResponseWriter, r *http.Request) {
 			if rate, allow := rateLimiter.Allow(); !allow {
-				log.Info("rateLimiter exceeded", slog.Int("rate", rate))
+				log.Info("rate-limiter exceeded", slog.Int("rate", rate))
 				rateLimitExceeded(w, int(rateLimiter.GetLimit().Seconds()))
 				return
 			}

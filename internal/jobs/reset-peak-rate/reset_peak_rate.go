@@ -1,20 +1,20 @@
-package resetPeakRate
+package reset_peak_rate
 
 import (
 	"log/slog"
 	"time"
 	"url-shortner/internal/jobs"
-	"url-shortner/internal/rateLimiter"
+	"url-shortner/internal/rate-limiter"
 )
 
 type ResetJob struct {
 	log *slog.Logger
-	rl  *rateLimiter.RateLimiter
+	rl  *ratelimiter.RateLimiter
 }
 
-func New(log *slog.Logger, rl *rateLimiter.RateLimiter) *jobs.Job {
+func New(log *slog.Logger, rl *ratelimiter.RateLimiter) *jobs.Job {
 	return &jobs.Job{
-		Name: "jobs/resetPeakRate",
+		Name: "jobs/reset-peak-rate",
 		Job:  &ResetJob{log, rl},
 	}
 }

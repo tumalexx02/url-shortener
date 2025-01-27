@@ -1,0 +1,31 @@
+services:
+  app:
+    build:
+      context: .
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+    environment:
+      CONFIG_PATH: "/app/configs/local.yaml"
+    networks:
+      - dev
+
+  postgres:
+    image: postgres:15
+    container_name: postgres-prod
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_PASSWORD: "postgres"
+      POSTGRES_DB: "url"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    networks:
+      - dev
+
+volumes:
+  db_data:
+
+networks:
+  dev:

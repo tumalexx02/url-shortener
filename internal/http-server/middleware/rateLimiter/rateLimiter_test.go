@@ -1,4 +1,4 @@
-package mwRateLimiter_test
+package ratelimiter_test
 
 import (
 	"log/slog"
@@ -8,11 +8,11 @@ import (
 	"time"
 	"url-shortner/internal/config"
 	mwRateLimiter "url-shortner/internal/http-server/middleware/rateLimiter"
-	"url-shortner/internal/rateLimiter"
+	"url-shortner/internal/rate-limiter"
 )
 
 func TestRateLimiterMiddleware_BlockRequests(t *testing.T) {
-	rl := rateLimiter.NewRateLimiter(&config.Config{RateLimiter: config.RateLimiter{
+	rl := ratelimiter.NewRateLimiter(&config.Config{RateLimiter: config.RateLimiter{
 		RateLimit:  1,
 		RateBuffer: 0,
 		TimeFrame:  time.Second,
@@ -48,7 +48,7 @@ func TestRateLimiterMiddleware_BlockRequests(t *testing.T) {
 }
 
 func TestRateLimiterMiddleware_AllowRequests(t *testing.T) {
-	rl := rateLimiter.NewRateLimiter(&config.Config{RateLimiter: config.RateLimiter{
+	rl := ratelimiter.NewRateLimiter(&config.Config{RateLimiter: config.RateLimiter{
 		RateLimit:  2,
 		RateBuffer: 1,
 		TimeFrame:  time.Second,

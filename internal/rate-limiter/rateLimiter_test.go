@@ -1,14 +1,14 @@
-package rateLimiter_test
+package ratelimiter_test
 
 import (
 	"testing"
 	"time"
 	"url-shortner/internal/config"
-	"url-shortner/internal/rateLimiter"
+	"url-shortner/internal/rate-limiter"
 )
 
 func TestRateLimiter_BlockWithBuffer(t *testing.T) {
-	rl := rateLimiter.NewRateLimiter(&config.Config{RateLimiter: config.RateLimiter{
+	rl := ratelimiter.NewRateLimiter(&config.Config{RateLimiter: config.RateLimiter{
 		RateLimit:  2,
 		RateBuffer: 3,
 		TimeFrame:  300 * time.Millisecond,
@@ -44,7 +44,7 @@ func TestRateLimiter_BlockWithBuffer(t *testing.T) {
 }
 
 func TestRateLimiter_GetRate(t *testing.T) {
-	rl := rateLimiter.NewRateLimiter(&config.Config{RateLimiter: config.RateLimiter{
+	rl := ratelimiter.NewRateLimiter(&config.Config{RateLimiter: config.RateLimiter{
 		RateLimit:  2,
 		RateBuffer: 0,
 		TimeFrame:  100 * time.Millisecond,
@@ -61,7 +61,7 @@ func TestRateLimiter_GetRate(t *testing.T) {
 }
 
 func TestRateLimiter_GetPeakRate(t *testing.T) {
-	rl := rateLimiter.NewRateLimiter(&config.Config{RateLimiter: config.RateLimiter{
+	rl := ratelimiter.NewRateLimiter(&config.Config{RateLimiter: config.RateLimiter{
 		RateLimit:  100,
 		RateBuffer: 5,
 		TimeFrame:  100 * time.Millisecond,
@@ -83,7 +83,7 @@ func TestRateLimiter_GetPeakRate(t *testing.T) {
 }
 
 func TestRateLimiter_ResetPeakRate(t *testing.T) {
-	rl := rateLimiter.NewRateLimiter(&config.Config{RateLimiter: config.RateLimiter{
+	rl := ratelimiter.NewRateLimiter(&config.Config{RateLimiter: config.RateLimiter{
 		RateLimit:  100,
 		RateBuffer: 5,
 		TimeFrame:  100 * time.Millisecond,
