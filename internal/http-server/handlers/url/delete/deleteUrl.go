@@ -1,4 +1,4 @@
-package deleteUrl
+package delete
 
 import (
 	"errors"
@@ -18,7 +18,7 @@ type URLDeleter interface {
 
 func New(log *slog.Logger, urlDeleter URLDeleter) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		const op = "handlers.url.deleteUrl.New"
+		const op = "handlers.url.delete.New"
 
 		log = log.With(
 			slog.String("op", op),
@@ -47,9 +47,9 @@ func New(log *slog.Logger, urlDeleter URLDeleter) http.HandlerFunc {
 
 		err = urlDeleter.DeleteURL(alias)
 		if err != nil {
-			log.Error("failed to deleteUrl url", slog.String("error", err.Error()))
+			log.Error("failed to delete url", slog.String("error", err.Error()))
 
-			render.JSON(w, r, resp.Error("failed to deleteUrl url"))
+			render.JSON(w, r, resp.Error("failed to delete url"))
 
 			return
 		}

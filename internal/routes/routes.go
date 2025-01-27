@@ -6,16 +6,16 @@ import (
 	"log/slog"
 	"url-shortner/internal/config"
 	"url-shortner/internal/http-server/handlers/redirect"
-	"url-shortner/internal/http-server/handlers/url/deleteUrl"
+	"url-shortner/internal/http-server/handlers/url/delete"
 	"url-shortner/internal/http-server/handlers/url/save"
-	mwRateLimiter "url-shortner/internal/http-server/middleware/rateLimiter"
+	mwRateLimiter "url-shortner/internal/http-server/middleware/rate-limiter"
 	rl "url-shortner/internal/rate-limiter"
 )
 
 type UrlOperator interface {
 	save.URLSaver
 	redirect.URLGetter
-	deleteUrl.URLDeleter
+	delete.URLDeleter
 }
 
 func InitRoutes(cfg *config.Config, log *slog.Logger, storage UrlOperator, router *chi.Mux, rateLimiter *rl.RateLimiter) {
@@ -26,7 +26,7 @@ func InitRoutes(cfg *config.Config, log *slog.Logger, storage UrlOperator, route
 		r.Use(mwRateLimiter.New(log, rateLimiter))
 
 		r.Post("/", save.New(log, storage))
-		r.Delete("/{alias}", deleteUrl.New(log, storage))
+		r.Delete("/{alias}", delete.New(log, storage))
 	})
 
 	router.Get("/{alias}", redirect.New(log, storage))

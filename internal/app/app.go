@@ -19,11 +19,11 @@ import (
 )
 
 type App struct {
-	cnf     *config.Config
-	log     *slog.Logger
-	storage *postgres.Storage
-	router  *chi.Mux
-	rl      *rl.RateLimiter
+	cfg         *config.Config
+	log         *slog.Logger
+	storage     *postgres.Storage
+	router      *chi.Mux
+	ratelimiter *rl.RateLimiter
 }
 
 func New(cfg *config.Config, log *slog.Logger) (*App, error) {
@@ -57,20 +57,20 @@ func New(cfg *config.Config, log *slog.Logger) (*App, error) {
 func (a *App) Start() error {
 	const op = "app.Start"
 
-	resetPeakJob := reset_peak_rate.New(a.log, a.rl)
+	resetPeakJob := reset_peak_rate.New(a.log, a.ratelimiter)
 	err := a.startJobsScheduler("0 0 * * *", resetPeakJob)
 	if err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
 
-	a.log.Info("starting server", slog.String("address", a.cnf.Address))
+	a.log.Info("starting server", slog.String("address", a.cfg.Address))
 
 	srv := &http.Server{
-		Addr:         a.cnf.Address,
+		Addr:         a.cfg.Address,
 		Handler:      a.router,
-		ReadTimeout:  a.cnf.HTTPServer.Timeout,
-		WriteTimeout: a.cnf.HTTPServer.Timeout,
-		IdleTimeout:  a.cnf.HTTPServer.IdleTimeout,
+		ReadTimeout:  a.cfg.HTTPServer.Timeout,
+		WriteTimeout: a.cfg.HTTPServer.Timeout,
+		IdleTimeout:  a.cfg.HTTPServer.IdleTimeout,
 	}
 
 	return srv.ListenAndServe()
@@ -79,7 +79,7 @@ func (a *App) Start() error {
 func (a *App) startJobsScheduler(cronPattern string, jobs ...*jobs.Job) error {
 	const op = "app.startJobsScheduler"
 
-	loc, err := time.LoadLocation(a.cnf.Location)
+	loc, err := time.LoadLocation(a.cfg.Location)
 	if err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}

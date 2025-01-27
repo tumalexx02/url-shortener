@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 	"url-shortner/internal/config"
-	mwRateLimiter "url-shortner/internal/http-server/middleware/rateLimiter"
+	mwRateLimiter "url-shortner/internal/http-server/middleware/rate-limiter"
 	"url-shortner/internal/rate-limiter"
 )
 
