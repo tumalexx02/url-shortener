@@ -7,13 +7,14 @@ import (
 	"github.com/go-playground/validator/v10"
 	"log/slog"
 	"net/http"
+	"regexp"
 	resp "url-shortner/internal/api/response"
 	"url-shortner/internal/lib/random"
 	"url-shortner/internal/storage"
 )
 
 type Request struct {
-	URL   string `json:"url" validate:"required,url"`
+	URL   string `json:"url" validate:"required,custom_url"`
 	Alias string `json:"alias,omitempty"`
 }
 
@@ -50,8 +51,16 @@ func New(log *slog.Logger, urlSaver URLSaver) http.HandlerFunc {
 
 		log.Info("saving url", slog.Any("request", req))
 
-		if err := validator.New().Struct(req); err != nil {
-			validateErr := err.(validator.ValidationErrors)
+		val := validator.New()
+		err = val.RegisterValidation("custom_url", validateURL)
+		if err != nil {
+			log.Error("validator init error", slog.Attr{Key: "error", Value: slog.StringValue(err.Error())})
+			return
+		}
+
+		if err := val.Struct(req); err != nil {
+			var validateErr validator.ValidationErrors
+			errors.As(err, &validateErr)
 
 			log.Error("invalid request", slog.Attr{Key: "error", Value: slog.StringValue(err.Error())})
 
@@ -92,4 +101,10 @@ func responseOK(w http.ResponseWriter, r *http.Request, alias string) {
 		Response: resp.OK(),
 		Alias:    alias,
 	})
+}
+
+func validateURL(fn validator.FieldLevel) bool {
+	re := `^(?:https?://)?(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,6}(?:/.*)?$`
+	reg := regexp.MustCompile(re)
+	return reg.MatchString(fn.Field().String())
 }
