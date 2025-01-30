@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"regexp"
+	"strings"
 	resp "url-shortner/internal/api/response"
 	"url-shortner/internal/lib/random"
 	"url-shortner/internal/storage"
@@ -74,7 +75,9 @@ func New(log *slog.Logger, urlSaver URLSaver) http.HandlerFunc {
 			alias = random.NewRandomString(aliasLength)
 		}
 
-		id, err := urlSaver.SaveURL(req.URL, alias)
+		url := formatUrl(req.URL)
+
+		id, err := urlSaver.SaveURL(url, alias)
 		if errors.Is(err, storage.ErrUrlExist) {
 			log.Info("url already exists", slog.String("url", req.URL), slog.String("alias", req.Alias))
 
@@ -107,4 +110,12 @@ func validateURL(fn validator.FieldLevel) bool {
 	re := `^(?:https?://)?(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,6}(?:/.*)?$`
 	reg := regexp.MustCompile(re)
 	return reg.MatchString(fn.Field().String())
+}
+
+func formatUrl(url string) string {
+	url = strings.TrimPrefix(url, "https://")
+	url = strings.TrimPrefix(url, "http://")
+	url = strings.TrimPrefix(url, "www.")
+
+	return url
 }
