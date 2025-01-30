@@ -53,6 +53,7 @@ func New(log *slog.Logger, urlGetter URLGetter) http.HandlerFunc {
 
 		log.Info("got url", slog.String("alias", alias), slog.String("url", url))
 
+		url = "https://" + url
 		http.Redirect(w, r, url, http.StatusFound)
 	}
 }

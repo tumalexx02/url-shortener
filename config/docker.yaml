@@ -1,0 +1,21 @@
+env: "local"
+migrations_path: "./migrations"
+is_reload: false
+location: "Europe/Moscow"
+postgres_config:
+  host: "db"
+  port: "5432"
+  user: "postgres"
+  password: "postgres"
+  database_name: "url"
+  ssl_mode: "disable"
+http_server:
+  address: "0.0.0.0:8085"
+  timeout: 4s
+  idle_timeout: 60s
+  user: "myuser"
+  password: "mypass"
+rate_limiter:
+  rate_limit: 500
+  rate_buffer: 5
+  time_frame: 60s

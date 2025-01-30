@@ -7,13 +7,15 @@ import (
 	"github.com/go-playground/validator/v10"
 	"log/slog"
 	"net/http"
+	"regexp"
+	"strings"
 	resp "url-shortner/internal/api/response"
 	"url-shortner/internal/lib/random"
 	"url-shortner/internal/storage"
 )
 
 type Request struct {
-	URL   string `json:"url" validate:"required,url"`
+	URL   string `json:"url" validate:"required,custom_url"`
 	Alias string `json:"alias,omitempty"`
 }
 
@@ -50,8 +52,16 @@ func New(log *slog.Logger, urlSaver URLSaver) http.HandlerFunc {
 
 		log.Info("saving url", slog.Any("request", req))
 
-		if err := validator.New().Struct(req); err != nil {
-			validateErr := err.(validator.ValidationErrors)
+		val := validator.New()
+		err = val.RegisterValidation("custom_url", ValidateURL)
+		if err != nil {
+			log.Error("validator init error", slog.Attr{Key: "error", Value: slog.StringValue(err.Error())})
+			return
+		}
+
+		if err := val.Struct(req); err != nil {
+			var validateErr validator.ValidationErrors
+			errors.As(err, &validateErr)
 
 			log.Error("invalid request", slog.Attr{Key: "error", Value: slog.StringValue(err.Error())})
 
@@ -65,7 +75,9 @@ func New(log *slog.Logger, urlSaver URLSaver) http.HandlerFunc {
 			alias = random.NewRandomString(aliasLength)
 		}
 
-		id, err := urlSaver.SaveURL(req.URL, alias)
+		url := formatUrl(req.URL)
+
+		id, err := urlSaver.SaveURL(url, alias)
 		if errors.Is(err, storage.ErrUrlExist) {
 			log.Info("url already exists", slog.String("url", req.URL), slog.String("alias", req.Alias))
 
@@ -92,4 +104,18 @@ func responseOK(w http.ResponseWriter, r *http.Request, alias string) {
 		Response: resp.OK(),
 		Alias:    alias,
 	})
+}
+
+func ValidateURL(fn validator.FieldLevel) bool {
+	re := `^(https?://)?([a-zA-Z0-9-]+\.)?[a-zA-Z0-9-]+\.[a-zA-Z]{2,6}(/.*)?$`
+	reg := regexp.MustCompile(re)
+	return reg.MatchString(fn.Field().String())
+}
+
+func formatUrl(url string) string {
+	url = strings.TrimPrefix(url, "https://")
+	url = strings.TrimPrefix(url, "http://")
+	url = strings.TrimPrefix(url, "www.")
+
+	return url
 }

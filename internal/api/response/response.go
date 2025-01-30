@@ -7,13 +7,17 @@ import (
 )
 
 type Response struct {
-	Status string `json:"status"`
-	Error  string `json:"error,omitempty"`
+	Status  string `json:"status"`
+	Error   string `json:"error,omitempty"`
+	Message string `json:"message,omitempty"`
 }
 
 const (
-	StatusOk    = "OK"
-	StatusError = "ERROR"
+	StatusOk          = "OK"
+	StatusError       = "ERROR"
+	StatusUnavailable = "UNAVAILABLE"
+
+	MessageUnavailable = "the server is temporarily unavailable due to high traffic, please try again later"
 )
 
 func OK() Response {
@@ -26,6 +30,13 @@ func Error(msg string) Response {
 	return Response{
 		Status: StatusError,
 		Error:  msg,
+	}
+}
+
+func Unavailable() Response {
+	return Response{
+		Status:  StatusUnavailable,
+		Message: MessageUnavailable,
 	}
 }
 
