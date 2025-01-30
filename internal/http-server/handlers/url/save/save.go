@@ -53,7 +53,7 @@ func New(log *slog.Logger, urlSaver URLSaver) http.HandlerFunc {
 		log.Info("saving url", slog.Any("request", req))
 
 		val := validator.New()
-		err = val.RegisterValidation("custom_url", validateURL)
+		err = val.RegisterValidation("custom_url", ValidateURL)
 		if err != nil {
 			log.Error("validator init error", slog.Attr{Key: "error", Value: slog.StringValue(err.Error())})
 			return
@@ -106,8 +106,8 @@ func responseOK(w http.ResponseWriter, r *http.Request, alias string) {
 	})
 }
 
-func validateURL(fn validator.FieldLevel) bool {
-	re := `^(?:https?://)?(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,6}(?:/.*)?$`
+func ValidateURL(fn validator.FieldLevel) bool {
+	re := `^(https?://)?([a-zA-Z0-9-]+\.)?[a-zA-Z0-9-]+\.[a-zA-Z]{2,6}(/.*)?$`
 	reg := regexp.MustCompile(re)
 	return reg.MatchString(fn.Field().String())
 }
