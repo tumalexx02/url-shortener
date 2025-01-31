@@ -12,8 +12,14 @@ import (
 	mwLogger "url-shortner/internal/http-server/middleware/logger"
 	rl "url-shortner/internal/rate-limiter"
 	"url-shortner/internal/routes"
+	"url-shortner/internal/stats"
 	"url-shortner/internal/storage/postgres"
 )
+
+type StatisticUpdater interface {
+	UpdateStats(newStats stats.Statistic) error
+	GetURLCount() (int, error)
+}
 
 type App struct {
 	cfg         *config.Config
@@ -57,7 +63,12 @@ func (a *App) Start() error {
 	ctx, cancelCtx := context.WithCancel(context.Background())
 	defer cancelCtx()
 
-	err := a.startDailyPeakReset(ctx)
+	err := a.startPeakRateResetJob(ctx)
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	err = a.startAnalyticsJob(ctx)
 	if err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
@@ -75,7 +86,7 @@ func (a *App) Start() error {
 	return srv.ListenAndServe()
 }
 
-func (a *App) startDailyPeakReset(ctx context.Context) error {
+func (a *App) startPeakRateResetJob(ctx context.Context) error {
 	const op = "app.startDailyJobs"
 
 	loc, err := time.LoadLocation(a.cfg.Location)
@@ -101,10 +112,85 @@ func (a *App) startDailyPeakReset(ctx context.Context) error {
 			case <-timer.C:
 				lastPeakRate := a.rateLimiter.GetPeakRate()
 				a.rateLimiter.ResetPeakRate()
+				err := a.storage.ResetPeakRate()
+				if err != nil {
+					a.log.Error("failed resetting peak rate", slog.String("error", err.Error()))
+					continue
+				}
 				a.log.Info("peak rate reset completed", slog.Int("last-peak-rate", lastPeakRate))
 			}
 		}
 	}()
+
+	return nil
+}
+
+func (a *App) startAnalyticsJob(ctx context.Context) error {
+	const op = "app.startAnalyticsJob"
+
+	loc, err := time.LoadLocation(a.cfg.Location)
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	existingPeakRate, err := a.storage.GetLastPeakRate()
+	if err != nil {
+	}
+
+	if existingPeakRate != 0 {
+		a.rateLimiter.SetPeakRate(existingPeakRate)
+	}
+
+	a.log.Info("starting analytics job", slog.String("location", a.cfg.Location))
+
+	err = a.updateStats()
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	go func() {
+		for {
+			now := time.Now().In(loc)
+			next := time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute()+1, now.Second(), 0, loc)
+			duration := time.Until(next)
+
+			timer := time.NewTimer(duration)
+
+			select {
+			case <-ctx.Done():
+				timer.Stop()
+				a.log.Info("stopping daily peak reset")
+				return
+			case <-timer.C:
+				err := a.updateStats()
+				if err != nil {
+					a.log.Error("failed to update stats", slog.String("error", err.Error()))
+					continue
+				}
+				now := time.Now()
+				a.log.Info("analytics updated", slog.Time("time", now))
+			}
+		}
+	}()
+
+	return nil
+}
+
+func (a *App) updateStats() error {
+	const op = "app.updateStats"
+
+	totalUrl, err := a.storage.GetURLCount()
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+	peakRate := a.rateLimiter.GetPeakRate()
+	rate := a.rateLimiter.GetRate()
+
+	statistic := stats.NewStatistic(totalUrl, rate, peakRate)
+	err = a.storage.UpdateStats(statistic)
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
 
 	return nil
 }
