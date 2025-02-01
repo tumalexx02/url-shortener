@@ -130,6 +130,7 @@ func (a *App) startAnalyticsJob(ctx context.Context) error {
 
 	existingPeakRate, err := a.storage.GetLastPeakRate()
 	if err != nil {
+		a.log.Error("failed getting last peak rate", slog.String("error", err.Error()))
 	}
 
 	a.log.Info("last peak rate got", slog.Int("day_peak", existingPeakRate.DayPeak), slog.Time("last_updated", existingPeakRate.LastUpdate), slog.Bool("is_yesterday", isYesterday(existingPeakRate.LastUpdate)))

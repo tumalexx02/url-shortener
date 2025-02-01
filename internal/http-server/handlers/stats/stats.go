@@ -1,6 +1,7 @@
 package stats
 
 import (
+	"fmt"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/render"
 	"log/slog"
@@ -36,7 +37,7 @@ func New(log *slog.Logger, statsGetter StatisticGetter) http.HandlerFunc {
 			return
 		}
 
-		log.Info("got statistic")
+		log.Info("got statistic", slog.String("stats", fmt.Sprintf("%+v", statistic)))
 		responseOK(w, r, statistic)
 	}
 }
