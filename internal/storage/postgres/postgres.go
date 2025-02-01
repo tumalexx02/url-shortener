@@ -7,6 +7,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
 	"github.com/pressly/goose/v3"
+	"time"
 	"url-shortner/internal/config"
 	"url-shortner/internal/stats"
 	"url-shortner/internal/storage"
@@ -22,16 +23,18 @@ const (
 	deleteUrlQuery   = `DELETE FROM url WHERE alias = $1;`
 	getUrlCountQuery = `SELECT COUNT(*) FROM url;`
 
-	getLastPeakRate = `SELECT day_peak FROM analytics WHERE id = 1`
+	getLastPeakRate = `SELECT day_peak, timestamp FROM analytics WHERE id = 1;`
+	getStats        = "SELECT total_url_count, url_per_min, day_peak FROM analytics WHERE id = 1;"
 	updateStats     = `
-		INSERT INTO analytics (id, total_url_count, url_per_min, day_peak) 
-		VALUES (1, $1, $2, $3) 
+		INSERT INTO analytics (id, total_url_count, url_per_min, day_peak, timestamp) 
+		VALUES (1, $1, $2, $3, $4) 
 		ON CONFLICT (id) 
 		DO UPDATE SET total_url_count = EXCLUDED.total_url_count, 
 					  url_per_min = EXCLUDED.url_per_min, 
-					  day_peak = EXCLUDED.day_peak;
+					  day_peak = EXCLUDED.day_peak,
+					  timestamp = EXCLUDED.timestamp;
 	`
-	resetPeakRate = "UPDATE analytics SET day_peak = 0 WHERE id = 1"
+	resetPeakRate = "UPDATE analytics SET day_peak = 0 WHERE id = 1;"
 
 	ErrUniqueViolation = "23505"
 )
@@ -166,25 +169,25 @@ func (s *Storage) DeleteURL(alias string) error {
 	return nil
 }
 
-func (s *Storage) GetLastPeakRate() (int, error) {
+func (s *Storage) GetLastPeakRate() (stats.DayPeakStatistic, error) {
 	const op = "storage.postgres.GetLastPeakRate"
 
 	stmt, err := s.db.Preparex(getLastPeakRate)
 	if err != nil {
-		return 0, fmt.Errorf("%s: %w", op, err)
+		return stats.DayPeakStatistic{}, fmt.Errorf("%s: %w", op, err)
 	}
 
-	var peakRate int
-	err = stmt.Get(&peakRate)
+	var peakRateStats stats.DayPeakStatistic
+	err = stmt.Get(&peakRateStats)
 
 	if errors.Is(err, sql.ErrNoRows) {
-		return 0, storage.ErrUrlNotFound
+		return stats.DayPeakStatistic{}, storage.ErrUrlNotFound
 	}
 	if err != nil {
-		return 0, fmt.Errorf("%s: %w", op, err)
+		return stats.DayPeakStatistic{}, fmt.Errorf("%s: %w", op, err)
 	}
 
-	return peakRate, nil
+	return peakRateStats, nil
 }
 
 func (s *Storage) GetURLCount() (int, error) {
@@ -213,7 +216,8 @@ func (s *Storage) UpdateStats(newStats stats.Statistic) error {
 		return fmt.Errorf("%s: %w", op, err)
 	}
 
-	_, err = stmt.Exec(newStats.TotalURLCount, newStats.UrlPerMinute, newStats.DayPeak)
+	now := time.Now()
+	_, err = stmt.Exec(newStats.TotalURLCount, newStats.UrlPerMinute, newStats.DayPeak, now)
 	if err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
@@ -237,7 +241,19 @@ func (s *Storage) ResetPeakRate() error {
 	return nil
 }
 
-// TODO: create method for getting stats
-//func (s *Storage) GetStats() (stats.Statistic, error) {
-//	const op = "storage.postgres.GetStats"
-//}
+func (s *Storage) GetStats() (stats.Statistic, error) {
+	const op = "storage.postgres.GetStats"
+
+	stmt, err := s.db.Preparex(getStats)
+	if err != nil {
+		return stats.Statistic{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	var statistics stats.Statistic
+	err = stmt.Get(&statistics)
+	if err != nil {
+		return stats.Statistic{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	return statistics, nil
+}

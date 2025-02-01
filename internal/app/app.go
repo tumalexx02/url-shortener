@@ -16,11 +16,6 @@ import (
 	"url-shortner/internal/storage/postgres"
 )
 
-type StatisticUpdater interface {
-	UpdateStats(newStats stats.Statistic) error
-	GetURLCount() (int, error)
-}
-
 type App struct {
 	cfg         *config.Config
 	log         *slog.Logger
@@ -137,8 +132,10 @@ func (a *App) startAnalyticsJob(ctx context.Context) error {
 	if err != nil {
 	}
 
-	if existingPeakRate != 0 {
-		a.rateLimiter.SetPeakRate(existingPeakRate)
+	a.log.Info("last peak rate got", slog.Int("day_peak", existingPeakRate.DayPeak), slog.Time("last_updated", existingPeakRate.LastUpdate), slog.Bool("is_yesterday", isYesterday(existingPeakRate.LastUpdate)))
+
+	if existingPeakRate.DayPeak != 0 && !isYesterday(existingPeakRate.LastUpdate) {
+		a.rateLimiter.SetPeakRate(existingPeakRate.DayPeak)
 	}
 
 	a.log.Info("starting analytics job", slog.String("location", a.cfg.Location))
@@ -193,4 +190,11 @@ func (a *App) updateStats() error {
 	}
 
 	return nil
+}
+
+func isYesterday(t time.Time) bool {
+	now := time.Now()
+	yesterday := now.AddDate(0, 0, -1)
+
+	return t.Year() == yesterday.Year() && t.Month() == yesterday.Month() && t.Day() == yesterday.Day()
 }

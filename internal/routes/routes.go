@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"url-shortner/internal/config"
 	"url-shortner/internal/http-server/handlers/redirect"
+	"url-shortner/internal/http-server/handlers/stats"
 	"url-shortner/internal/http-server/handlers/url/delete"
 	"url-shortner/internal/http-server/handlers/url/save"
 	mwRateLimiter "url-shortner/internal/http-server/middleware/rate-limiter"
@@ -16,6 +17,7 @@ type UrlOperator interface {
 	save.URLSaver
 	redirect.URLGetter
 	delete.URLDeleter
+	stats.StatisticGetter
 }
 
 func InitRoutes(cfg *config.Config, log *slog.Logger, storage UrlOperator, router *chi.Mux, rateLimiter *rl.RateLimiter) {
@@ -30,5 +32,5 @@ func InitRoutes(cfg *config.Config, log *slog.Logger, storage UrlOperator, route
 	})
 
 	router.Get("/{alias}", redirect.New(log, storage))
-	router.Get("/stats", redirect.New(log, storage))
+	router.Get("/stats", stats.New(log, storage))
 }
