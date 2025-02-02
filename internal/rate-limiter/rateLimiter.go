@@ -80,6 +80,20 @@ func (rl *RateLimiter) ResetPeakRate() int {
 	return lastPeakRate
 }
 
+func (rl *RateLimiter) SetPeakRate(rate int) {
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+
+	rl.peakRate = rate
+}
+
+func (rl *RateLimiter) GetRate() int {
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+
+	return rl.getRate()
+}
+
 func (rl *RateLimiter) getRate() int {
 	now := time.Now()
 

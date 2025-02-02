@@ -26,7 +26,7 @@ func main() {
 
 	err = application.Start()
 	if err != nil {
-		log.Error("failed to start server")
+		log.Error("failed to start server", slog.Attr{Key: "error", Value: slog.StringValue(err.Error())})
 	}
 
 	log.Info("shutting down server")

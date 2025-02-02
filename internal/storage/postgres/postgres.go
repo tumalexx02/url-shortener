@@ -7,18 +7,51 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
 	"github.com/pressly/goose/v3"
+	"time"
 	"url-shortner/internal/config"
+	"url-shortner/internal/models/database"
+	"url-shortner/internal/stats"
 	"url-shortner/internal/storage"
 )
 
 const (
+	isTableExistsQuery = `SELECT EXISTS (
+        SELECT 1
+        FROM information_schema.tables
+        WHERE table_name = $1
+    )`
+
 	insertUrlQuery = `
 		INSERT INTO url (alias, url)
 		VALUES ($1, $2)
 		RETURNING id;
 	`
-	getUrlQuery        = `SELECT url FROM url WHERE alias = $1;`
-	deleteUrlQuery     = `DELETE FROM url WHERE alias = $1;`
+	getUrlQuery      = `SELECT url FROM url WHERE alias = $1;`
+	deleteUrlQuery   = `DELETE FROM url WHERE alias = $1;`
+	getUrlCountQuery = `SELECT COUNT(*) FROM url;`
+
+	getLastPeakRate = `SELECT day_peak, updated_at FROM analytics WHERE id = 1;`
+	getStats        = "SELECT total_url_count, leaders, day_peak FROM analytics WHERE id = 1;"
+	updateStats     = `
+		INSERT INTO analytics (id, total_url_count, leaders, day_peak, updated_at) 
+		VALUES (1, $1, $2, $3, $4) 
+		ON CONFLICT (id) 
+		DO UPDATE SET total_url_count = EXCLUDED.total_url_count, 
+					  leaders = EXCLUDED.leaders,
+					  day_peak = EXCLUDED.day_peak,
+					  updated_at = EXCLUDED.updated_at;
+	`
+	resetPeakRate = `UPDATE analytics SET day_peak = 0 WHERE id = 1;`
+	getLeaders    = `
+		SELECT 
+			SPLIT_PART(url, '/', 1) AS resource,
+			COUNT(*) AS url_count
+		FROM url
+		GROUP BY resource
+		ORDER BY url_count DESC
+		LIMIT 3;
+	`
+
 	ErrUniqueViolation = "23505"
 )
 
@@ -77,11 +110,7 @@ func isTableExists(db *sqlx.DB, tableName string) (bool, error) {
 	const op = "storage.postgres.isTableExists"
 
 	var exists bool
-	query := `SELECT EXISTS (
-        SELECT 1
-        FROM information_schema.tables
-        WHERE table_name = $1
-    )`
+	query := isTableExistsQuery
 
 	err := db.Get(&exists, query, tableName)
 	if err != nil {
@@ -150,4 +179,110 @@ func (s *Storage) DeleteURL(alias string) error {
 	}
 
 	return nil
+}
+
+func (s *Storage) GetLastPeakRate() (stats.DayPeakStatistic, error) {
+	const op = "storage.postgres.GetLastPeakRate"
+
+	stmt, err := s.db.Preparex(getLastPeakRate)
+	if err != nil {
+		return stats.DayPeakStatistic{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	var peakRateStats stats.DayPeakStatistic
+	err = stmt.Get(&peakRateStats)
+
+	if errors.Is(err, sql.ErrNoRows) {
+		return stats.DayPeakStatistic{}, storage.ErrUrlNotFound
+	}
+	if err != nil {
+		return stats.DayPeakStatistic{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	return peakRateStats, nil
+}
+
+func (s *Storage) GetURLCount() (int, error) {
+	const op = "storage.postgres.GetURLCount"
+
+	stmt, err := s.db.Preparex(getUrlCountQuery)
+	if err != nil {
+		return 0, fmt.Errorf("%s: %w", op, err)
+	}
+
+	var count int
+	err = stmt.Get(&count)
+
+	if err != nil {
+		return 0, fmt.Errorf("%s: %w", op, err)
+	}
+
+	return count, nil
+}
+
+func (s *Storage) GetResourcesLeaders() ([]stats.ResourceInfo, error) {
+	const op = "storage.postgres.GetResourcesLeaders"
+
+	stmt, err := s.db.Preparex(getLeaders)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+
+	var resources []stats.ResourceInfo
+	err = stmt.Select(&resources)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+
+	return resources, nil
+}
+
+func (s *Storage) UpdateStats(newStats database.Statistic) error {
+	const op = "storage.postgres.UpdateStats"
+
+	stmt, err := s.db.Preparex(updateStats)
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	now := time.Now()
+	_, err = stmt.Exec(newStats.TotalURLCount, newStats.LeadersJSON, newStats.DayPeak, now)
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	return nil
+}
+
+func (s *Storage) ResetPeakRate() error {
+	const op = "storage.postgres.ResetPeakRate"
+
+	stmt, err := s.db.Preparex(resetPeakRate)
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	_, err = stmt.Exec()
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	return nil
+}
+
+func (s *Storage) GetStats() (database.Statistic, error) {
+	const op = "storage.postgres.GetStats"
+
+	stmt, err := s.db.Preparex(getStats)
+	if err != nil {
+		return database.Statistic{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	var statistics database.Statistic
+	err = stmt.Get(&statistics)
+	if err != nil {
+		return database.Statistic{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	return statistics, nil
 }

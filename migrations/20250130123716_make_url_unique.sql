@@ -1,15 +1,15 @@
 -- +goose Up
 -- +goose StatementBegin
 WITH cte AS (
-    SELECT MIN(id) AS id, alias
+    SELECT MIN(id) AS id, url
     FROM url
-    GROUP BY alias
+    GROUP BY url
 )
 DELETE FROM url
 WHERE id NOT IN (SELECT id FROM cte);
 
 ALTER TABLE url
-    ADD CONSTRAINT alias_unique UNIQUE (alias);
+    ADD CONSTRAINT url_unique UNIQUE (url);
 -- +goose StatementEnd
 
 -- +goose Down
