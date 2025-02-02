@@ -126,9 +126,14 @@ func (a *App) updateStats() error {
 	}
 	peakRate := a.rateLimiter.GetPeakRate()
 
-	leadersJSON, err := json.Marshal(leaders)
-	if err != nil {
-		return fmt.Errorf("%s: %w", op, err)
+	var leadersJSON []byte
+	if len(leaders) == 0 {
+		leadersJSON = []byte("[]")
+	} else {
+		leadersJSON, err = json.Marshal(leaders)
+		if err != nil {
+			return fmt.Errorf("%s: %w", op, err)
+		}
 	}
 
 	statistic := database.NewStatistic(totalUrl, peakRate, leadersJSON)

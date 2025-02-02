@@ -4,7 +4,7 @@ CREATE TABLE analytics (
     id SERIAL PRIMARY KEY,
     total_url_count INT,
     day_peak INT,
-    leaders JSONB,
+    leaders JSONB DEFAULT '[]',
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP);
 -- +goose StatementEnd
 
