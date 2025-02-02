@@ -32,5 +32,5 @@ func InitRoutes(cfg *config.Config, log *slog.Logger, storage UrlOperator, route
 	})
 
 	router.Get("/{alias}", redirect.New(log, storage))
-	router.Get("/stats", stats.New(log, storage))
+	router.Get("/stats", stats.New(log, storage, rateLimiter))
 }
